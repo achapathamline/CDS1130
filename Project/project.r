@@ -7,4 +7,3 @@ print(head(data))
 print(str(data))
 
 print(summary(data))
-
