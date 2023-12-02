@@ -1,0 +1,153 @@
+# Project Part 1 Chapman
+
+Load libraryies and dataset
+
+```{r}
+library(tidyverse)
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(reshape2)
+library(RColorBrewer)
+
+data <- read.csv("phs_2020_1.csv")
+```
+
+plot 1
+
+```{r 1}
+plot1 <- ggplot(data, aes(x = stat_amount)) +
+  geom_histogram(binwidth = 500, fill = "blue", color = "black") +
+  labs(title = "Histogram of stat_amount", x = "Stat Amount", y = "Frequency")
+print(plot1)
+```
+
+plot 2
+
+```{r 2}
+plot2 <- ggplot(data, aes(y = stat_amount)) +
+  geom_boxplot(fill = "tomato", color = "black") +
+  labs(title = "Boxplot of stat_amount", y = "Stat Amount")
+print(plot2)
+```
+
+plot 3
+
+```{r 3}
+plot3 <- ggplot(data, aes(x = factor(player_name))) +
+  geom_bar() +
+  labs(title = "Matches Played by Player", x = "Player Name", y = "Number of Matches") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+print(plot3)
+```
+
+plot 4
+
+```{r 4}
+
+damage_done <- data[data$stat_name == "All Damage Done", ]
+damage_blocked <- data[data$stat_name == "Damage Blocked", ]
+
+# Assuming there is a common key to merge the two, like player_name and match_id
+merged_data <- merge(damage_done, damage_blocked, by=c("player_name", "esports_match_id"))
+
+
+plot4 <- ggplot(merged_data, aes(x=stat_amount.x, y=stat_amount.y)) +
+  geom_point() +
+  labs(title="All Damage Done vs Damage Blocked", x="All Damage Done", y="Damage Blocked")
+print(plot4)
+```
+
+plot 5
+
+```{r 5}
+plot5 <- ggplot(data, aes(x=map_type, y=stat_amount)) +
+  geom_boxplot() +
+  labs(title="Stat Amount by Map Type", x="Map Type", y="Stat Amount")
+print(plot5)
+```
+
+plot 6
+
+```{r 6}
+plot6 <- ggplot(data, aes(x=stat_amount, fill=map_type)) +
+  geom_density(alpha=0.7) +
+  facet_wrap(~map_type) +
+  labs(title="Density of stat_amount by Map Type", x="Stat Amount", y="Density")
+print(plot6)
+
+
+
+average_stats <- data %>%
+  group_by(hero_name) %>%
+  summarise(average_stat = mean(stat_amount, na.rm=TRUE))
+```
+
+plot 7
+
+```{r 7}
+plot7 <- ggplot(average_stats, aes(x=reorder(hero_name, average_stat), y=average_stat, fill=hero_name)) +
+  geom_bar(stat="identity") +
+  labs(title="Average Stat Amount by Hero Name", x="Hero Name", y="Average Stat Amount") +
+  theme(axis.text.x = element_text(angle=90, hjust=1))
+print(plot7)
+```
+
+plot 8
+
+```{r 8}
+data$start_time <- as.POSIXct(data$start_time, format="%m/%d/%Y %H:%M")
+
+plot8 <- ggplot(data, aes(x=start_time, y=stat_amount, group=esports_match_id, color=esports_match_id)) +
+  geom_line() +
+  labs(title="Stat Amount over Time", x="Time", y="Stat Amount")
+print(plot8)
+```
+
+plot 9
+
+```{r 9}
+# Assuming 'data' is your data frame
+# Step 1: Filter for the relevant stats
+filtered_data <- data %>%
+  filter(stat_name %in% c("Hero Damage Done", "Damage Blocked")) %>%
+  select(start_time, player_name, hero_name, stat_name, stat_amount)
+
+# Step 2: Spread the data so that each stat becomes a column
+wide_data <- filtered_data %>%
+  pivot_wider(names_from = stat_name, values_from = stat_amount)
+
+# Now, create your plot with the correct columns
+plot9 <- ggplot(wide_data, aes(x=`Hero Damage Done`, y=`Damage Blocked`, color=hero_name)) +
+  geom_point() +
+  labs(title="Scatter Plot of Hero Damage Done vs Damage Blocked", x="Hero Damage Done", y="Damage Blocked")
+
+# Print the plot
+print(plot9)
+
+```
+
+plot 10
+
+```{r 10}
+# Reshape the data into a wide format if not already done
+wide_data <- dcast(data, esports_match_id + player_name ~ stat_name, value.var="stat_amount")
+
+# Compute the correlation matrix
+correlation_matrix <- cor(wide_data[, -c(1,2)], use="complete.obs")
+
+# Convert to a long format for ggplot2
+melted_correlation_matrix <- melt(correlation_matrix, na.rm = TRUE)
+
+# Rename columns for clarity
+colnames(melted_correlation_matrix) <- c("Statistic1", "Statistic2", "Correlation")
+
+plot10 <- ggplot(melted_correlation_matrix, aes(x = Statistic1, y = Statistic2, fill = Correlation)) +
+  geom_tile() +
+  scale_fill_gradient2(low = "blue", high = "red", mid = "white", midpoint = 0, limit = c(-1, 1)) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, size = 9, hjust = 1)) +
+  labs(title = "Correlation Heatmap of Statistics", x = "", y = "")
+print(plot10)
+
+```

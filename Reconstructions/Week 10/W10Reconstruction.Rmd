@@ -1,0 +1,102 @@
+---
+title: "Week 10 Visualization Reconstruction"
+output: html_document
+---
+
+![Original Image](https://static01.nyt.com/images/2023/04/24/learning/AverageGameDurationLN/AverageGameDurationLN-superJumbo.png)
+
+The original graph is a basic line chart that shows the average game duration from 1980 to 2023 in the MLB.
+
+To recreate this graph I'm going to need the average game time over the past 43 years.
+
+I'm going to add a horizontal line extending out from the 2023 data point that allows easier compairison between the game times from 40 years ago.
+
+```{r, include=FALSE}
+
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+# Load the data
+df <- read.csv("mlb.csv")
+
+
+
+# Remove rows where 'Time' column is NA (missing)
+data <- subset(df, !is.na(Time))
+
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+
+# Assuming 'data' is a dataframe that has been read into R already
+
+# Convert 'Time' from 'HH:MM' to minutes
+convert_time_to_minutes <- function(time_str) {
+  if (is.na(time_str)) {
+    return(NA)  # Return NA if the time is NA
+  }
+  time_parts <- as.numeric(strsplit(time_str, ':')[[1]])
+  hours <- time_parts[1]
+  minutes <- time_parts[2]
+  return(hours * 60 + minutes)
+}
+
+# Apply the conversion to the 'Time' column
+data$Time_in_minutes <- sapply(data$Time, convert_time_to_minutes)
+
+# Filter the data to include only the year 1955 onwards
+data_filtered <- data %>%
+  filter(Year >= 1980)
+
+# Sort the data by Year to ensure the line connects points in chronological order
+data_sorted <- data_filtered %>%
+  arrange(Year)
+
+# Plotting the graph
+gg <- ggplot(data_sorted, aes(x = Year, y = Time_in_minutes)) +
+  geom_line(aes(group = 1)) +  # Connect points with lines
+  geom_point() +  # Add points
+  theme_minimal(base_size = 14) +  # Use a minimal theme with base font size set
+
+  # Add title and labels
+  ggtitle('MLB Game Time Over Years (1980 Onwards)') +
+  xlab('Year') +
+  ylab('Game Time in Minutes') +
+  theme(plot.title = element_text(hjust = 0.5)) + # Center the plot title
+  geom_hline(yintercept = tail(data_sorted$Time_in_minutes, 1), linetype="dashed", color = "blue") +
+  theme(legend.position = "bottom") # Position legend at the bottom
+
+# Color the last segment
+if (nrow(data_sorted) > 1) {
+  last_segment <- tail(data_sorted, 2)
+  gg <- gg + geom_line(data = last_segment, aes(x = Year, y = Time_in_minutes), color = 'red')
+}
+
+# Draw a horizontal line for the last data point's Time value
+gg <- gg + geom_hline(yintercept = tail(data_sorted$Time_in_minutes, 1), linetype="dashed", color = "blue", size = 0.5)
+
+# Adding the legend manually
+last_point <- tail(data_sorted, 1)
+
+gg <- gg + geom_point(data = last_point, aes(x = Year, y = Time_in_minutes), color = 'red', size = 3) +
+  geom_text(data = last_point, aes(x = Year, y = Time_in_minutes, label = "2023 \n (2:43)", vjust = 1.5))
+  
+# Add a label to the second to last point
+second_to_last_point <- tail(data_sorted, 2)[1, ]
+gg <- gg + geom_text(data = data.frame(second_to_last_point),
+                     aes(label = "2022 \n (3:06)"),
+                     vjust = 1.5, hjust = 1, size = 3)
+
+# Draw the grid
+gg <- gg + theme(panel.grid.major = element_line(colour = "grey80"),
+                 panel.grid.minor = element_blank(),
+                 panel.background = element_blank())
+
+# Display the plot
+print(gg)
+```
+
+```{r, echo=FALSE}
+# Display the plot
+print(gg)
+```

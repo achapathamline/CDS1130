@@ -1,0 +1,10 @@
+---
+title: "W13 Crit Xander"
+---
+
+This is my week 11 reconstruction
+
+
+| Original | Reconstruction |
+|:----|----:|
+|![](HeatWaveGraphLN-superJumbo.png)|![](temperature_plot.png)|

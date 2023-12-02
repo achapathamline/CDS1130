@@ -1,0 +1,279 @@
+---
+title: "Exploratory Analysis for the Overwatch League 2020 Season Part 1"
+output: html_document
+---
+## What is Overwatch (in 2020)?
+
+Overwatch is a colorful team-based shooter game starring a diverse cast of powerful heroes. Travel the world, build a team, and contest objectives in exhilarating 6v6 combat.
+
+Tank heroes soak damage and shatter fortified positions, like closely grouped enemies and narrow chokepoints. If you’re a tank, you lead the charge.
+
+Damage heroes seek out, engage, and obliterate the enemy with wide-ranging tools, abilities and play styles. Fearsome but fragile, these heroes require backup to survive.
+
+Support heroes empower their allies by healing, shielding, boosting damage, and disabling foes. As a support, you’re the backbone of your team’s survival.
+
+## Overwatch vs Overwatch 2
+
+This analysis is looking at the 2020 season of the Overwatch League when Overwatch (1) was the most up to date version of the game. Teams were comprised of six active players per map, with most teams having 8 or 9 players in total for mid-match substitutions.
+
+The current version of Overwatch, being Overwatch 2, is a five versus five game instead of six versus six. This change was made as the balancing team found it near impossible to tune Tanks when there were two or even three of them playing for each team at a time.
+
+While the analysis of the 2020 season may be out of date for balance and some gameplay standards, it can provide as a good look at which players were dominant previously, or be fun for fans who want to look back at a previous season.
+
+Some of the players that stand out in this analysis continue to be dominant players in the Overwatch League currently, even in its five versus five format.
+
+```{r setup, include=FALSE}
+library(readr)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE)
+
+# Function to calculate the mode
+Mode <- function(x) {
+  ux <- unique(x)
+  if (length(ux) == 1) return(ux) # If there's only one unique value, return it
+  tab <- tabulate(match(x, ux))
+  ux[tab == max(tab)]
+}
+
+# Load the filtered dataset without "All Heroes"
+file_path <- 'Project/phs_2020_1_no_all_heroes.csv'
+data <- read_csv(file_path)
+
+# Mapping of hero names to their roles
+hero_roles <- c(
+  'D.Va' = 'Tank', 'Doomfist' = 'Tank', 'Junker Queen' = 'Tank', 'Mauga' = 'Tank',
+  'Orisa' = 'Tank', 'Ramattra' = 'Tank', 'Reinhardt' = 'Tank', 'Roadhog' = 'Tank',
+  'Sigma' = 'Tank', 'Winston' = 'Tank', 'Wrecking Ball' = 'Tank', 'Zarya' = 'Tank',
+  'Ashe' = 'Damage', 'Bastion' = 'Damage', 'McCree' = 'Damage', 'Echo' = 'Damage',
+  'Genji' = 'Damage', 'Hanzo' = 'Damage', 'Junkrat' = 'Damage', 'Mei' = 'Damage',
+  'Pharah' = 'Damage', 'Reaper' = 'Damage', 'Sojourn' = 'Damage',
+  'Soldier: 76' = 'Damage', 'Sombra' = 'Damage', 'Symmetra' = 'Damage',
+  'Torbjörn' = 'Damage', 'Tracer' = 'Damage', 'Widowmaker' = 'Damage',
+  'Ana' = 'Support', 'Baptiste' = 'Support', 'Brigitte' = 'Support',
+  'Illari' = 'Support', 'Kiriko' = 'Support', 'Lifeweaver' = 'Support',
+  'Lúcio' = 'Support', 'Mercy' = 'Support', 'Moira' = 'Support', 'Zenyatta' = 'Support'
+)
+
+# Apply the role mapping to the eliminations data
+data <- data %>%
+  mutate(role = hero_roles[hero_name])
+
+# Filter the dataset for rows where 'stat_name' is 'Eliminations'
+eliminations_data <- filter(data, stat_name == 'Eliminations')
+
+# Calculate the average eliminations per game for each player
+average_eliminations <- eliminations_data %>%
+  group_by(player_name, esports_match_id) %>%
+  summarise(avg_elim = mean(stat_amount), .groups = 'drop') %>%
+  group_by(player_name) %>%
+  summarise(average_eliminations = mean(avg_elim), .groups = 'drop')
+
+# Determine the most common role for each player
+player_roles <- eliminations_data %>%
+  group_by(player_name) %>%
+  summarise(common_role = Mode(role), .groups = 'drop')
+
+# Merge the player roles with the average eliminations
+player_impact <- merge(average_eliminations, player_roles, by = "player_name")
+```
+
+## Visualization 1
+
+This bar graph tells us which players are having the most impact per game graded on eliminations.
+
+Players like SharP, Hawk, Kodak, Edison, and SPACE were all very important to their teams success during the season.
+
+ChipSa played one map the entire season which doesn't give us a comprehensive understanding of his overall impact.
+
+```{r 1, fig.height = 25}
+ggplot(player_impact, aes(x = reorder(player_name, average_eliminations), y = average_eliminations, fill = common_role)) +
+  geom_bar(stat = "identity") +
+  scale_fill_manual(values = c('Tank' = 'blue', 'Damage' = 'red', 'Support' = 'green')) +
+  coord_flip() +
+  theme_minimal() +
+  labs(x = "Player Name", y = "Average Eliminations Per Game", fill = "Player Role", title = "Average Eliminations Per Game by Player, Sorted by Average Eliminations") +
+  theme(legend.position = "bottom")
+```
+
+## Visualization 2
+
+This bar graph tells us which heros are having the most impact graded on average eliminations.
+
+Genji, D.va, and Moira were some of the most played heros during the 2020 season because they were so influential in their play which we can see is represented here.
+
+Eliminations is generally not the best characteristic to be grading support heros on because their primary focus is on healing done.
+
+```{r 2}
+avg_elim_by_hero <- eliminations_data %>%
+  group_by(hero_name, role) %>% # Assuming there's a 'role' column
+  summarise(average_eliminations = mean(stat_amount, na.rm = TRUE)) %>%
+  ungroup() %>% # Remove grouping
+  arrange(desc(average_eliminations))
+
+ggplot(avg_elim_by_hero, aes(x = reorder(hero_name, average_eliminations), y = average_eliminations, fill = role)) +
+  geom_bar(stat = "identity") +
+  scale_fill_manual(values = c('Tank' = 'blue', 'Damage' = 'red', 'Support' = 'green')) +
+  coord_flip() +
+  labs(title = "Average Eliminations by Hero", x = "Hero", y = "Average Eliminations", fill = "Role") +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+
+```
+
+## Visualization 3
+
+This bar graph tell us which role on average was contributing most to the games played graded on eliminations.
+
+What many may find as surprising that Tank heros outperformed Damage heros on average, however the META (Most Effective Tactics Available) for most of the 2020 season was dominated by a team composition which consisted of 3 Tank heros and 3 Support heros, and 0 Damage heros.
+
+```{r 3}
+avg_elim_by_role <- eliminations_data %>%
+  group_by(role) %>%
+  summarise(average_eliminations = mean(stat_amount, na.rm = TRUE)) %>%
+  arrange(desc(average_eliminations))
+
+ggplot(avg_elim_by_role, aes(x = role, y = average_eliminations, fill = role)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Average Eliminations by Role", x = "Role", y = "Average Eliminations") +
+  scale_fill_manual(values = c('Tank' = 'blue', 'Damage' = 'red', 'Support' = 'green')) +
+  theme_minimal()
+```
+
+## Visualization 4
+
+This histogram shows us how most of the time, players would get less than 20 eliminations per match. It also shows us how Damage and Tank heros will end up getting more eliminations than Support heros.
+
+```{r 4}
+ggplot(eliminations_data, aes(x = stat_amount, fill = role)) +
+  geom_histogram(bins = 30, alpha = 0.7) +
+  labs(title = "Elimination Count Distribution by Role", x = "Number of Eliminations", y = "Frequency") +
+  scale_fill_manual(values = c('Tank' = 'blue', 'Damage' = 'red', 'Support' = 'green')) +
+  theme_minimal()
+```
+
+## Visualization 5
+
+This bar graph tells us which players performed best by average eliminations separated by the roles they played during the season.
+
+A player like Edison for example, has a higher average eliminations on tank than anyone else in the league, and was also one of the leading players in the Damage role.
+
+```{r 5, fig.height=25}
+top_players_by_role <- eliminations_data %>%
+  group_by(player_name, role) %>%
+  summarise(average_eliminations = mean(stat_amount, na.rm = TRUE)) %>%
+  slice_max(order_by = average_eliminations, n = 5) %>%
+  ungroup() %>%
+  arrange(role, desc(average_eliminations))
+
+ggplot(top_players_by_role, aes(x = player_name, y = average_eliminations, fill = role)) +
+  geom_bar(stat = "identity", position = position_dodge(width = 0.7)) +
+  coord_flip() +
+  labs(title = "Top Players by Average Eliminations within Each Role", x = "Player", y = "Average Eliminations") +
+  scale_fill_manual(values = c('Tank' = 'blue', 'Damage' = 'red', 'Support' = 'green')) +
+  theme_minimal()
+```
+
+## Visualization 6
+
+This boxplot gives us lots of insight to which heros performed generally well over their entire playtime during the season.
+
+Heros like D.Va, Sigma, Zarya, Reaper, Genji, and Moira all have wide boxes that lean more towards the right side of the graph. This tells us that these heros were top performers whereas heros like Bastion and Mercy did not perform as well when graded by eliminations.
+
+```{r 6}
+ggplot(eliminations_data, aes(x = hero_name, y = stat_amount, fill = role)) +
+  geom_boxplot() +
+  coord_flip() +
+  labs(title = "Boxplot of Eliminations by Hero", x = "Hero", y = "Number of Eliminations") +
+  theme_minimal()
+```
+
+## Visualization 7
+
+This boxplot tells us which players performed very well given a wider range of matches played.
+
+Unlike the bar graph from Visualization 1, we can see that ChipSa only played one game the entire season which is information we missed using the bar graph.
+
+Players with very large right halves of their box plots, were very consistant at performing well against other players.
+
+SharP, super, STRIKER, Hanbin, DDing, and Edison are all players that we can see performed very well throughout the season.
+
+```{r 7, fig.height=25}
+ggplot(eliminations_data, aes(x = player_name, y = stat_amount, fill = role)) +
+  geom_boxplot() +
+  coord_flip() +
+  labs(title = "Boxplot of Eliminations by Player", x = "Player", y = "Number of Eliminations") +
+  theme_minimal()
+```
+
+## Visualization 8
+
+In this boxplot we can see which roles performed best throughout the season.
+
+While Tank has a higher third quartile than Damage does, we can see that there are more datapoints between Damage's second and third quartile than Tank's. This tells us that Damage role heros are doing their job of securing eliminations with Damage heros more frequently netting eliminations than Tank heros.
+
+```{r 8}
+ggplot(eliminations_data, aes(x = role, y = stat_amount, fill = role)) +
+  geom_boxplot() +
+  labs(title = "Boxplot of Eliminations by Role", x = "Role", y = "Number of Eliminations") +
+  scale_fill_manual(values = c('Tank' = 'blue', 'Damage' = 'red', 'Support' = 'green')) +
+  theme_minimal()
+```
+
+## Visualization 9
+
+This heat map tells us if there are any map specific picks that team's liked to use. The one that stands out the most is Lucio on Lijiang Tower.
+
+This also shows us generally how often heros were picked overall. Heros like Torbjorn and Junkrat seeing almost no playtime throughout the entire season and heros like Lucio, D.Va, Baptiste, Tracer, and Mei all saw high pick rates no matter the map.
+
+This heatmap also tells us which maps were played more than others. Havana and Horizon Lunar Colony were both maps that rarely saw playtime unlike maps such as Lijiang Tower and King's Row which saw lots of play time.
+
+```{r 9}
+hero_picks_count <- data %>%
+  group_by(esports_match_id, map_name, hero_name) %>%
+  summarise(count = n(), .groups = 'drop') %>%
+  ungroup()
+
+hero_picks_aggregated <- hero_picks_count %>%
+  group_by(map_name, hero_name) %>%
+  summarise(total_count = sum(count), .groups = 'drop')
+
+hero_picks_wide <- hero_picks_aggregated %>%
+  pivot_wider(names_from = map_name, values_from = total_count, values_fill = list(total_count = 0))
+
+hero_picks_long <- hero_picks_wide %>%
+  gather(key = "map_name", value = "pick_count", -hero_name)
+
+ggplot(hero_picks_long, aes(x = map_name, y = hero_name, fill = pick_count)) +
+  geom_tile(color = "white") +
+  scale_fill_gradient(low = "white", high = "steelblue") +
+  labs(title = "Hero Picks on Different Maps", x = "Map", y = "Hero") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+## Visualization 10
+
+This line graph shows us how many eliminations happened throughout the season. We can see where lots of high elimination matches happened, or when lots of matches occured within a short period of time.
+
+This information would be best used to find outlier matches that due to the high elimination count, were probably very exciting matches to watch as a fan, or would be a good place to look for star players as a scouter.
+
+```{r 10}
+# Convert 'start_time' to a Date object if it's not already
+eliminations_data <- eliminations_data %>%
+  mutate(date = as.Date(start_time)) %>%
+  arrange(date) %>%
+  group_by(date) %>%
+  summarise(daily_eliminations = sum(stat_amount), .groups = 'drop') %>%
+  mutate(cumulative_eliminations = cumsum(daily_eliminations))
+
+# Create the plot
+ggplot(eliminations_data, aes(x = date, y = cumulative_eliminations)) +
+  geom_line() + # Use geom_line for a line plot
+  labs(title = "Rolling Total Number of Eliminations Over Time",
+       x = "Date by Month",
+       y = "Cumulative Eliminations") +
+  theme_minimal()
+```
