@@ -8,7 +8,6 @@ format:
     code-summary: "Show the code"
 ---
 
-
 ```{r setup, include=FALSE}
 library(readr)
 library(dplyr)
@@ -45,49 +44,51 @@ The shift to 5v5 in Overwatch 2, particularly impacting the role and balance of 
 ```{r analysis setup, include=FALSE}
 # Function to calculate the mode
 Mode <- function(x) {
-  ux <- unique(x)
-  if (length(ux) == 1) return(ux) # If there's only one unique value, return it
-  tab <- tabulate(match(x, ux))
-  ux[tab == max(tab)]
+    ux <- unique(x)
+    if (length(ux) == 1) {
+        return(ux)
+    } # If there's only one unique value, return it
+    tab <- tabulate(match(x, ux))
+    ux[tab == max(tab)]
 }
 
 # Load the filtered dataset without "All Heroes"
-file_path <- 'phs_2020_1_no_all_heroes.csv'
+file_path <- "phs_2020_1_no_all_heroes.csv"
 data <- read_csv(file_path)
 
 # Mapping of hero names to their roles
 hero_roles <- c(
-  'D.Va' = 'Tank', 'Doomfist' = 'Tank', 'Junker Queen' = 'Tank', 'Mauga' = 'Tank',
-  'Orisa' = 'Tank', 'Ramattra' = 'Tank', 'Reinhardt' = 'Tank', 'Roadhog' = 'Tank',
-  'Sigma' = 'Tank', 'Winston' = 'Tank', 'Wrecking Ball' = 'Tank', 'Zarya' = 'Tank',
-  'Ashe' = 'Damage', 'Bastion' = 'Damage', 'McCree' = 'Damage', 'Echo' = 'Damage',
-  'Genji' = 'Damage', 'Hanzo' = 'Damage', 'Junkrat' = 'Damage', 'Mei' = 'Damage',
-  'Pharah' = 'Damage', 'Reaper' = 'Damage', 'Sojourn' = 'Damage',
-  'Soldier: 76' = 'Damage', 'Sombra' = 'Damage', 'Symmetra' = 'Damage',
-  'Torbjörn' = 'Damage', 'Tracer' = 'Damage', 'Widowmaker' = 'Damage',
-  'Ana' = 'Support', 'Baptiste' = 'Support', 'Brigitte' = 'Support',
-  'Illari' = 'Support', 'Kiriko' = 'Support', 'Lifeweaver' = 'Support',
-  'Lúcio' = 'Support', 'Mercy' = 'Support', 'Moira' = 'Support', 'Zenyatta' = 'Support'
+    "D.Va" = "Tank", "Doomfist" = "Tank", "Junker Queen" = "Tank", "Mauga" = "Tank",
+    "Orisa" = "Tank", "Ramattra" = "Tank", "Reinhardt" = "Tank", "Roadhog" = "Tank",
+    "Sigma" = "Tank", "Winston" = "Tank", "Wrecking Ball" = "Tank", "Zarya" = "Tank",
+    "Ashe" = "Damage", "Bastion" = "Damage", "McCree" = "Damage", "Echo" = "Damage",
+    "Genji" = "Damage", "Hanzo" = "Damage", "Junkrat" = "Damage", "Mei" = "Damage",
+    "Pharah" = "Damage", "Reaper" = "Damage", "Sojourn" = "Damage",
+    "Soldier: 76" = "Damage", "Sombra" = "Damage", "Symmetra" = "Damage",
+    "Torbjörn" = "Damage", "Tracer" = "Damage", "Widowmaker" = "Damage",
+    "Ana" = "Support", "Baptiste" = "Support", "Brigitte" = "Support",
+    "Illari" = "Support", "Kiriko" = "Support", "Lifeweaver" = "Support",
+    "Lúcio" = "Support", "Mercy" = "Support", "Moira" = "Support", "Zenyatta" = "Support"
 )
 
 # Apply the role mapping to the eliminations data
 data <- data %>%
-  mutate(role = hero_roles[hero_name])
+    mutate(role = hero_roles[hero_name])
 
 # Filter the dataset for rows where 'stat_name' is 'Eliminations'
-eliminations_data <- filter(data, stat_name == 'Eliminations')
+eliminations_data <- filter(data, stat_name == "Eliminations")
 
 # Calculate the average eliminations per game for each player
 average_eliminations <- eliminations_data %>%
-  group_by(player_name, esports_match_id) %>%
-  summarise(avg_elim = mean(stat_amount), .groups = 'drop') %>%
-  group_by(player_name) %>%
-  summarise(average_eliminations = mean(avg_elim), .groups = 'drop')
+    group_by(player_name, esports_match_id) %>%
+    summarise(avg_elim = mean(stat_amount), .groups = "drop") %>%
+    group_by(player_name) %>%
+    summarise(average_eliminations = mean(avg_elim), .groups = "drop")
 
 # Determine the most common role for each player
 player_roles <- eliminations_data %>%
-  group_by(player_name) %>%
-  summarise(common_role = Mode(role), .groups = 'drop')
+    group_by(player_name) %>%
+    summarise(common_role = Mode(role), .groups = "drop")
 
 # Merge the player roles with the average eliminations
 player_impact <- merge(average_eliminations, player_roles, by = "player_name")
@@ -103,26 +104,26 @@ player_impact <- merge(average_eliminations, player_roles, by = "player_name")
 
 ```{r 1}
 num_games_per_player <- eliminations_data %>%
-  group_by(player_name) %>%
-  summarise(num_games = n_distinct(esports_match_id), .groups = 'drop')
+    group_by(player_name) %>%
+    summarise(num_games = n_distinct(esports_match_id), .groups = "drop")
 
 player_impact <- merge(player_impact, num_games_per_player, by = "player_name")
 
 top_20_players <- player_impact %>%
-  arrange(desc(average_eliminations)) %>%
-  slice_head(n = 20)
+    arrange(desc(average_eliminations)) %>%
+    slice_head(n = 20)
 
-top_20_players$dummy_legend <- 'Number of Games'
+top_20_players$dummy_legend <- "Number of Games"
 
 ggplot(top_20_players, aes(x = reorder(player_name, average_eliminations), y = average_eliminations, fill = common_role)) +
-  geom_bar(stat = "identity") +
-  geom_text(aes(label = num_games, color = dummy_legend), hjust = -0.3, vjust = 0.5, position = position_dodge(width = 0.9)) +
-  scale_fill_manual(values = c('Tank' = 'blue', 'Damage' = 'red', 'Support' = 'green')) +
-  scale_color_manual(values = 'black', name = '', labels = 'Number of Games') +
-  coord_flip() +
-  theme_minimal() +
-  labs(x = "Player Name", y = "Average Eliminations Per Game", fill = "Player Role", title = "Top 20 Players by Average Eliminations Per Game") +
-  theme(legend.position = "bottom", legend.title.align = 0.5)
+    geom_bar(stat = "identity") +
+    geom_text(aes(label = num_games, color = dummy_legend), hjust = -0.3, vjust = 0.5, position = position_dodge(width = 0.9)) +
+    scale_fill_manual(values = c("Tank" = "blue", "Damage" = "red", "Support" = "green")) +
+    scale_color_manual(values = "black", name = "", labels = "Number of Games") +
+    coord_flip() +
+    theme_minimal() +
+    labs(x = "Player Name", y = "Average Eliminations Per Game", fill = "Player Role", title = "Top 20 Players by Average Eliminations Per Game") +
+    theme(legend.position = "bottom", legend.title.align = 0.5)
 ```
 
 ### Top Players in each Role Compared
@@ -134,33 +135,33 @@ ggplot(top_20_players, aes(x = reorder(player_name, average_eliminations), y = a
 ```{r 5}
 # Calculate the number of games for each player
 num_games_per_player <- eliminations_data %>%
-  group_by(player_name) %>%
-  summarise(num_games = n_distinct(esports_match_id), .groups = 'drop')
+    group_by(player_name) %>%
+    summarise(num_games = n_distinct(esports_match_id), .groups = "drop")
 
 # Get the top 5 players within each role separately
 top_players_by_role <- eliminations_data %>%
-  group_by(role, player_name) %>%
-  summarise(average_eliminations = mean(stat_amount, na.rm = TRUE), .groups = 'drop') %>%
-  group_by(role) %>% # Ensure the slicing is done within each role
-  slice_max(order_by = average_eliminations, n = 5, with_ties = FALSE) %>%
-  ungroup() %>%
-  arrange(role, desc(average_eliminations))
+    group_by(role, player_name) %>%
+    summarise(average_eliminations = mean(stat_amount, na.rm = TRUE), .groups = "drop") %>%
+    group_by(role) %>% # Ensure the slicing is done within each role
+    slice_max(order_by = average_eliminations, n = 5, with_ties = FALSE) %>%
+    ungroup() %>%
+    arrange(role, desc(average_eliminations))
 
 # Merge this information with the number of games
 top_players_by_role <- merge(top_players_by_role, num_games_per_player, by = "player_name")
 
 # Create a dummy variable for the legend (for the number of games)
-top_players_by_role$dummy_legend <- 'Number of Games'
+top_players_by_role$dummy_legend <- "Number of Games"
 
 ggplot(top_players_by_role, aes(x = reorder(player_name, average_eliminations), y = average_eliminations, fill = role)) +
-  geom_bar(stat = "identity", position = position_dodge(width = 0.7)) +
-  geom_text(aes(label = num_games, color = dummy_legend), hjust = -0.3, vjust = 0.5, position = position_dodge(width = 0.9)) +
-  scale_fill_manual(values = c('Tank' = 'blue', 'Damage' = 'red', 'Support' = 'green')) +
-  scale_color_manual(values = 'black', name = '', labels = 'Number of Games') +
-  coord_flip() +
-  labs(title = "Top 5 Players by Average Eliminations within Each Role", x = "Player", y = "Average Eliminations") +
-  theme_minimal() +
-  theme(legend.position = "bottom", legend.title.align = 0.5)
+    geom_bar(stat = "identity", position = position_dodge(width = 0.7)) +
+    geom_text(aes(label = num_games, color = dummy_legend), hjust = -0.3, vjust = 0.5, position = position_dodge(width = 0.9)) +
+    scale_fill_manual(values = c("Tank" = "blue", "Damage" = "red", "Support" = "green")) +
+    scale_color_manual(values = "black", name = "", labels = "Number of Games") +
+    coord_flip() +
+    labs(title = "Top 5 Players by Average Eliminations within Each Role", x = "Player", y = "Average Eliminations") +
+    theme_minimal() +
+    theme(legend.position = "bottom", legend.title.align = 0.5)
 
 ```
 
@@ -173,25 +174,25 @@ ggplot(top_players_by_role, aes(x = reorder(player_name, average_eliminations), 
 ```{r 7}
 # Identifying top 5 players in each role based on average eliminations
 top_players_by_role <- eliminations_data %>%
-  group_by(player_name, role) %>%
-  summarise(average_eliminations = mean(stat_amount, na.rm = TRUE), .groups = 'drop') %>%
-  group_by(role) %>%
-  slice_max(order_by = average_eliminations, n = 5, with_ties = FALSE) %>%
-  ungroup() %>%
-  select(player_name)
+    group_by(player_name, role) %>%
+    summarise(average_eliminations = mean(stat_amount, na.rm = TRUE), .groups = "drop") %>%
+    group_by(role) %>%
+    slice_max(order_by = average_eliminations, n = 5, with_ties = FALSE) %>%
+    ungroup() %>%
+    select(player_name)
 
 # Subsetting the eliminations_data to include only these top players
 top_eliminations_data <- eliminations_data %>%
-  semi_join(top_players_by_role, by = "player_name")
+    semi_join(top_players_by_role, by = "player_name")
 
 # Creating the boxplot with the subsetted data
 ggplot(top_eliminations_data, aes(x = player_name, y = stat_amount, fill = role)) +
-  geom_boxplot(outlier.shape = NA) +  # Optional: Hide outliers
-  coord_flip() +
-  labs(title = "Boxplot of Eliminations by Top 5 Players in Each Role", x = "Player", y = "Number of Eliminations") +
-  scale_fill_manual(values = c('Tank' = 'blue', 'Damage' = 'red', 'Support' = 'green')) +
-  theme_minimal() +
-  theme(legend.position = "bottom", axis.text.y = element_text(size = 7))
+    geom_boxplot(outlier.shape = NA) + # Optional: Hide outliers
+    coord_flip() +
+    labs(title = "Boxplot of Eliminations by Top 5 Players in Each Role", x = "Player", y = "Number of Eliminations") +
+    scale_fill_manual(values = c("Tank" = "blue", "Damage" = "red", "Support" = "green")) +
+    theme_minimal() +
+    theme(legend.position = "bottom", axis.text.y = element_text(size = 7))
 
 ```
 
@@ -205,28 +206,28 @@ ggplot(top_eliminations_data, aes(x = player_name, y = stat_amount, fill = role)
 
 ```{r 2a, output=FALSE}
 avg_elim_by_hero <- eliminations_data %>%
-  group_by(hero_name, role) %>% # Assuming there's a 'role' column
-  summarise(average_eliminations = mean(stat_amount, na.rm = TRUE)) %>%
-  ungroup() %>% # Remove grouping
-  arrange(desc(average_eliminations))
+    group_by(hero_name, role) %>% # Assuming there's a 'role' column
+    summarise(average_eliminations = mean(stat_amount, na.rm = TRUE)) %>%
+    ungroup() %>% # Remove grouping
+    arrange(desc(average_eliminations))
 
 ggplot(avg_elim_by_hero, aes(x = reorder(hero_name, average_eliminations), y = average_eliminations, fill = role)) +
-  geom_bar(stat = "identity") +
-  scale_fill_manual(values = c('Tank' = 'blue', 'Damage' = 'red', 'Support' = 'green')) +
-  coord_flip() +
-  labs(title = "Average Eliminations by Hero", x = "Hero", y = "Average Eliminations", fill = "Role") +
-  theme_minimal() +
-  theme(legend.position = "bottom")
+    geom_bar(stat = "identity") +
+    scale_fill_manual(values = c("Tank" = "blue", "Damage" = "red", "Support" = "green")) +
+    coord_flip() +
+    labs(title = "Average Eliminations by Hero", x = "Hero", y = "Average Eliminations", fill = "Role") +
+    theme_minimal() +
+    theme(legend.position = "bottom")
 ```
 
 ```{r 2b, echo=FALSE}
 ggplot(avg_elim_by_hero, aes(x = reorder(hero_name, average_eliminations), y = average_eliminations, fill = role)) +
-  geom_bar(stat = "identity") +
-  scale_fill_manual(values = c('Tank' = 'blue', 'Damage' = 'red', 'Support' = 'green')) +
-  coord_flip() +
-  labs(title = "Average Eliminations by Hero", x = "Hero", y = "Average Eliminations", fill = "Role") +
-  theme_minimal() +
-  theme(legend.position = "bottom")
+    geom_bar(stat = "identity") +
+    scale_fill_manual(values = c("Tank" = "blue", "Damage" = "red", "Support" = "green")) +
+    coord_flip() +
+    labs(title = "Average Eliminations by Hero", x = "Hero", y = "Average Eliminations", fill = "Role") +
+    theme_minimal() +
+    theme(legend.position = "bottom")
 ```
 
 ### Elimination Distribution
@@ -237,10 +238,10 @@ ggplot(avg_elim_by_hero, aes(x = reorder(hero_name, average_eliminations), y = a
 
 ```{r 4}
 ggplot(eliminations_data, aes(x = stat_amount, fill = role)) +
-  geom_histogram(bins = 30, alpha = 0.7) +
-  labs(title = "Elimination Count Distribution by Role", x = "Number of Eliminations", y = "Frequency") +
-  scale_fill_manual(values = c('Tank' = 'blue', 'Damage' = 'red', 'Support' = 'green')) +
-  theme_minimal()
+    geom_histogram(bins = 30, alpha = 0.7) +
+    labs(title = "Elimination Count Distribution by Role", x = "Number of Eliminations", y = "Frequency") +
+    scale_fill_manual(values = c("Tank" = "blue", "Damage" = "red", "Support" = "green")) +
+    theme_minimal()
 ```
 
 ### Hero Performance by Elimination Boxplot
@@ -251,10 +252,10 @@ ggplot(eliminations_data, aes(x = stat_amount, fill = role)) +
 
 ```{r 6}
 ggplot(eliminations_data, aes(x = hero_name, y = stat_amount, fill = role)) +
-  geom_boxplot() +
-  coord_flip() +
-  labs(title = "Boxplot of Eliminations by Hero", x = "Hero", y = "Number of Eliminations") +
-  theme_minimal()
+    geom_boxplot() +
+    coord_flip() +
+    labs(title = "Boxplot of Eliminations by Hero", x = "Hero", y = "Number of Eliminations") +
+    theme_minimal()
 ```
 
 ### Role Performance Boxplot
@@ -265,10 +266,10 @@ ggplot(eliminations_data, aes(x = hero_name, y = stat_amount, fill = role)) +
 
 ```{r 8}
 ggplot(eliminations_data, aes(x = role, y = stat_amount, fill = role)) +
-  geom_boxplot() +
-  labs(title = "Boxplot of Eliminations by Role", x = "Role", y = "Number of Eliminations") +
-  scale_fill_manual(values = c('Tank' = 'blue', 'Damage' = 'red', 'Support' = 'green')) +
-  theme_minimal()
+    geom_boxplot() +
+    labs(title = "Boxplot of Eliminations by Role", x = "Role", y = "Number of Eliminations") +
+    scale_fill_manual(values = c("Tank" = "blue", "Damage" = "red", "Support" = "green")) +
+    theme_minimal()
 ```
 
 ### Average Eliminations by Role
@@ -279,15 +280,15 @@ ggplot(eliminations_data, aes(x = role, y = stat_amount, fill = role)) +
 
 ```{r 3}
 avg_elim_by_role <- eliminations_data %>%
-  group_by(role) %>%
-  summarise(average_eliminations = mean(stat_amount, na.rm = TRUE)) %>%
-  arrange(desc(average_eliminations))
+    group_by(role) %>%
+    summarise(average_eliminations = mean(stat_amount, na.rm = TRUE)) %>%
+    arrange(desc(average_eliminations))
 
 ggplot(avg_elim_by_role, aes(x = role, y = average_eliminations, fill = role)) +
-  geom_bar(stat = "identity") +
-  labs(title = "Average Eliminations by Role", x = "Role", y = "Average Eliminations") +
-  scale_fill_manual(values = c('Tank' = 'blue', 'Damage' = 'red', 'Support' = 'green')) +
-  theme_minimal()
+    geom_bar(stat = "identity") +
+    labs(title = "Average Eliminations by Role", x = "Role", y = "Average Eliminations") +
+    scale_fill_manual(values = c("Tank" = "blue", "Damage" = "red", "Support" = "green")) +
+    theme_minimal()
 ```
 
 ## General Analysises
@@ -300,26 +301,26 @@ ggplot(avg_elim_by_role, aes(x = role, y = average_eliminations, fill = role)) +
 
 ```{r 9}
 hero_picks_count <- data %>%
-  group_by(esports_match_id, map_name, hero_name) %>%
-  summarise(count = n(), .groups = 'drop') %>%
-  ungroup()
+    group_by(esports_match_id, map_name, hero_name) %>%
+    summarise(count = n(), .groups = "drop") %>%
+    ungroup()
 
 hero_picks_aggregated <- hero_picks_count %>%
-  group_by(map_name, hero_name) %>%
-  summarise(total_count = sum(count), .groups = 'drop')
+    group_by(map_name, hero_name) %>%
+    summarise(total_count = sum(count), .groups = "drop")
 
 hero_picks_wide <- hero_picks_aggregated %>%
-  pivot_wider(names_from = map_name, values_from = total_count, values_fill = list(total_count = 0))
+    pivot_wider(names_from = map_name, values_from = total_count, values_fill = list(total_count = 0))
 
 hero_picks_long <- hero_picks_wide %>%
-  gather(key = "map_name", value = "pick_count", -hero_name)
+    gather(key = "map_name", value = "pick_count", -hero_name)
 
 ggplot(hero_picks_long, aes(x = map_name, y = hero_name, fill = pick_count)) +
-  geom_tile(color = "white") +
-  scale_fill_gradient(low = "white", high = "steelblue") +
-  labs(title = "Hero Picks on Different Maps", x = "Map", y = "Hero") +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+    geom_tile(color = "white") +
+    scale_fill_gradient(low = "white", high = "steelblue") +
+    labs(title = "Hero Picks on Different Maps", x = "Map", y = "Hero") +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
 ### Seasonal Elimination Trends
@@ -331,23 +332,24 @@ ggplot(hero_picks_long, aes(x = map_name, y = hero_name, fill = pick_count)) +
 ```{r 10}
 # Convert 'start_time' to a Date object if it's not already
 eliminations_data <- eliminations_data %>%
-  mutate(date = as.Date(start_time)) %>%
-  arrange(date) %>%
-  group_by(date) %>%
-  summarise(daily_eliminations = sum(stat_amount), .groups = 'drop') %>%
-  mutate(cumulative_eliminations = cumsum(daily_eliminations))
+    mutate(date = as.Date(start_time)) %>%
+    arrange(date) %>%
+    group_by(date) %>%
+    summarise(daily_eliminations = sum(stat_amount), .groups = "drop") %>%
+    mutate(cumulative_eliminations = cumsum(daily_eliminations))
 
 # Create the plot
 ggplot(eliminations_data, aes(x = date, y = cumulative_eliminations)) +
-  geom_line() + # Use geom_line for a line plot
-  labs(title = "Rolling Total Number of Eliminations Over Time",
-       x = "Date by Month",
-       y = "Cumulative Eliminations") +
-  theme_minimal()
+    geom_line() + # Use geom_line for a line plot
+    labs(
+        title = "Rolling Total Number of Eliminations Over Time",
+        x = "Date by Month",
+        y = "Cumulative Eliminations"
+    ) +
+    theme_minimal()
 ```
 
 ## Machine Learning
-
 ```{r ml}
 # Install and load necessary packages
 library(readr)
@@ -359,15 +361,17 @@ library(ggplot2)
 library(tidyr)
 
 # Load the dataset
-file_path <- 'merged_esports_data_updated.csv' # Update this with the correct path
+file_path <- "merged_esports_data_updated.csv" # Update this with the correct path
 data <- read_csv(file_path)
 
 # Fill missing values with median or another appropriate value
-data_filled <- data %>% mutate(across(everything(), ~ifelse(is.na(.), median(., na.rm = TRUE), .)))
+data_filled <- data %>% mutate(across(everything(), ~ ifelse(is.na(.), median(., na.rm = TRUE), .)))
 
 # One-hot encoding for categorical variables
-categorical_cols <- c('map_type', 'map_name', 'player_name', 'team_name', 'hero_name')
-data_encoded <- data_filled %>% mutate_at(vars(one_of(categorical_cols)), as.factor) %>% dummyVars(~ ., data = .)
+categorical_cols <- c("map_type", "map_name", "player_name", "team_name", "hero_name")
+data_encoded <- data_filled %>%
+    mutate_at(vars(one_of(categorical_cols)), as.factor) %>%
+    dummyVars(~., data = .)
 data_final <- data.frame(predict(data_encoded, newdata = data_filled))
 
 # Drop irrelevant columns
@@ -387,8 +391,18 @@ y_train <- y[trainIndex]
 X_test <- X[-trainIndex, ]
 y_test <- y[-trainIndex]
 
-# Feature selection using Random Forest
-feature_selector <- randomForest(X_train, y_train, ntree=100)
+# Feature selection using Random Forest with reduced number of trees
+set.seed(42)
+feature_selector <- randomForest(
+    x = X_train,
+    y = y_train,
+    ntree = 50, # Reduced number of trees for quicker computation
+    mtry = floor(sqrt(ncol(X_train))), # Default value, can be reduced further
+    nodesize = 10, # Minimum size of terminal nodes
+    maxnodes = 30, # Maximum number of terminal nodes
+    importance = TRUE,
+    do.trace = 10
+)
 important_features <- importance(feature_selector)
 
 # Train models
@@ -399,16 +413,15 @@ random_forest_model <- randomForest(X_train, y_train)
 predictions_lr <- predict(logistic_regression_model, X_test)
 predictions_rf <- predict(random_forest_model, X_test)
 
-
 # Train the Gradient Boosting model with cross-validation
 set.seed(42)
 gradient_boosting_model <- gbm(
-  formula = y_train ~ .,
-  distribution = "bernoulli",
-  data = data.frame(X_train, y_train),
-  n.trees = 5000, # Number of trees can be adjusted based on your dataset
-  cv.folds = 5,   # Number of cross-validation folds
-  verbose = FALSE
+    formula = y_train ~ .,
+    distribution = "bernoulli",
+    data = data.frame(X_train, y_train),
+    n.trees = 5000, # Number of trees can be adjusted based on your dataset
+    cv.folds = 5, # Number of cross-validation folds
+    verbose = FALSE
 )
 
 # Find the best number of trees
@@ -431,7 +444,6 @@ print(confusionMatrix(predictions_lr, y_test))
 print("Random Forest Classification Report:")
 print(confusionMatrix(predictions_rf, y_test))
 
-
 # Feature Importances
 feature_importances_rf <- varImp(random_forest_model)
 feature_importances_gb <- summary(gradient_boosting_model)
@@ -440,15 +452,70 @@ feature_importances_gb <- summary(gradient_boosting_model)
 # For Random Forest
 rf_imp <- data.frame(Importance = feature_importances_rf$Overall, Feature = row.names(feature_importances_rf))
 ggplot(rf_imp, aes(x = reorder(Feature, Importance), y = Importance)) +
-  geom_bar(stat = "identity") +
-  coord_flip() +
-  labs(title = "Feature Importance - Random Forest")
+    geom_bar(stat = "identity") +
+    coord_flip() +
+    labs(title = "Feature Importance - Random Forest")
 
 # For Gradient Boosting
 gb_imp <- data.frame(Importance = feature_importances_gb, Feature = names(feature_importances_gb))
 ggplot(gb_imp, aes(x = reorder(Feature, Importance), y = Importance)) +
-  geom_bar(stat = "identity") +
-  coord_flip() +
-  labs(title = "Feature Importance - Gradient Boosting")
+    geom_bar(stat = "identity") +
+    coord_flip() +
+    labs(title = "Feature Importance - Gradient Boosting")
+```
 
+```{r ml2}
+# Function to extract performance metrics from a confusion matrix
+extract_metrics <- function(cm) {
+    data.frame(
+        Accuracy = cm$overall["Accuracy"],
+        Sensitivity = cm$byClass["Sensitivity"],
+        Specificity = cm$byClass["Specificity"]
+    )
+}
+
+# Function to plot confusion matrix as a heatmap
+plot_confusion_matrix <- function(cm, title) {
+    as.table(cm$table) %>%
+        as.data.frame() %>%
+        ggplot(aes(x = Reference, y = Prediction, fill = Freq)) +
+        geom_tile(color = "white") +
+        scale_fill_gradient(low = "white", high = "steelblue") +
+        geom_text(aes(label = sprintf("%0.0f", Freq)), vjust = 1) +
+        theme_minimal() +
+        labs(title = title, fill = "Count")
+}
+
+# Calculate performance metrics and create plots for each model
+# Logistic Regression
+cm_lr <- confusionMatrix(predictions_lr, y_test)
+metrics_lr <- extract_metrics(cm_lr)
+plot_cm_lr <- plot_confusion_matrix(cm_lr, "Logistic Regression Confusion Matrix")
+
+# Random Forest
+cm_rf <- confusionMatrix(predictions_rf, y_test)
+metrics_rf <- extract_metrics(cm_rf)
+plot_cm_rf <- plot_confusion_matrix(cm_rf, "Random Forest Confusion Matrix")
+
+# Gradient Boosting
+cm_gb <- confusionMatrix(factor(predictions_gb), factor(y_test))
+metrics_gb <- extract_metrics(cm_gb)
+plot_cm_gb <- plot_confusion_matrix(cm_gb, "Gradient Boosting Confusion Matrix")
+
+# Combine performance metrics into one dataframe
+combined_metrics <- rbind(metrics_lr, metrics_rf, metrics_gb)
+row.names(combined_metrics) <- c("Logistic Regression", "Random Forest", "Gradient Boosting")
+
+# Bar plot of accuracy, sensitivity, and specificity for each model
+ggplot(melt(combined_metrics), aes(x = Var2, y = value, fill = Var2)) +
+    geom_bar(stat = "identity", position = position_dodge()) +
+    facet_wrap(~Var1) +
+    scale_fill_brewer(palette = "Set1") +
+    labs(x = "Metric", y = "Value", title = "Model Performance Comparison") +
+    theme_minimal()
+
+# Display the plots
+plot_cm_lr
+plot_cm_rf
+plot_cm_gb
 ```
