@@ -1,7 +1,6 @@
 ---
 title: "2020 Overwatch League Analysis"
-output: html_document
-runtime: shiny
+output: html
 format:
   html:
     code-fold: true
@@ -98,9 +97,7 @@ player_impact <- merge(average_eliminations, player_roles, by = "player_name")
 
 ### Top Players by Eliminations
 
-- Objective: Identify key players based on average eliminations per game.
-- Design: Utilize color and layout to distinguish player roles. Incorporate annotations to highlight standout players and outliers (e.g., ChipSa).
-- Visual Strategy: Apply proximity and similarity to enhance readability and comparisons.
+To identify the top players based on average eliminations per game, we have used a bar graph showing the top 20 players alongside the number of games played and sorted by color so we know if one role is better at achieving higher average eliminations than other roles. Including the number of games played can highlight outliers such as ChipSa who ranks number 3 in the league but only played one game all season.
 
 ```{r 1}
 num_games_per_player <- eliminations_data %>%
@@ -128,9 +125,7 @@ ggplot(top_20_players, aes(x = reorder(player_name, average_eliminations), y = a
 
 ### Top Players in each Role Compared
 
-- Objective: Identify top players in each role based on average eliminations.
-- Design Choice: Implement a bar graph with role-based color coding and position adjustment for easy comparison.
-- Contextual Information: Annotate exceptional performances and versatile players.
+Again we use a bar graph to identify the top players based on elimination average but this time we are separating them into the top 5 based on role. This gives us a much clearer understanding compared with the previous graph that tanks generally have higher average eliminations while supports have the lowest.
 
 ```{r 5}
 # Calculate the number of games for each player
@@ -167,9 +162,7 @@ ggplot(top_players_by_role, aes(x = reorder(player_name, average_eliminations), 
 
 ### Top Players in each Role Comparing all Roles played
 
-- Objective: Explore the range of player performances throughout the season.
-- Insight: Contrast consistent high performers with those having limited playtime.
-- Visual Strategy: Use boxplots to display performance variability and annotate key observations.
+This graph allows us to see which roles the players from the previous chart played best on in terms of average eliminations. This also gives us a better understanding of how these top players performed over a longer time. by showing their extremes as well as their first and third quartiles.
 
 ```{r 7}
 # Identifying top 5 players in each role based on average eliminations
@@ -200,9 +193,7 @@ ggplot(top_eliminations_data, aes(x = player_name, y = stat_amount, fill = role)
 
 ### Hero Elimination Impact
 
-- Objective: Assess the influence of different heroes on average eliminations.
-- Context: Explain why elimination metrics vary significantly across roles, especially for support heroes.
-- Visual Strategy: Differentiate hero roles using color coding, and provide annotations for key insights.
+The objective of this graph is to understand which heros stand out when it comes to average eliminations. We can see that Damage and Tank heros generally trend towards the higher end of the graph while Supports who are mostly focused on healing and keeping their team alive have less focus spent on getting eliminations. Moira stands out as a support in the number 3 spot which can be explained by her kit which requires Moira to deal damage to regenerate her healing capibilities.
 
 ```{r 2a, output=FALSE}
 avg_elim_by_hero <- eliminations_data %>%
@@ -350,172 +341,120 @@ ggplot(eliminations_data, aes(x = date, y = cumulative_eliminations)) +
 ```
 
 ## Machine Learning
-```{r ml}
-# Install and load necessary packages
-library(readr)
-library(dplyr)
-library(caret)
-library(randomForest)
-library(gbm)
-library(ggplot2)
-library(tidyr)
+
+### Python
+```{python ml}
+# Import necessary libraries
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import confusion_matrix
+import numpy as np
 
 # Load the dataset
-file_path <- "merged_esports_data_updated.csv" # Update this with the correct path
-data <- read_csv(file_path)
+data = pd.read_csv("merged_esports_data_updated.csv")
 
-# Fill missing values with median or another appropriate value
-data_filled <- data %>% mutate(across(everything(), ~ ifelse(is.na(.), median(., na.rm = TRUE), .)))
-
-# One-hot encoding for categorical variables
-categorical_cols <- c("map_type", "map_name", "player_name", "team_name", "hero_name")
-data_encoded <- data_filled %>%
-    mutate_at(vars(one_of(categorical_cols)), as.factor) %>%
-    dummyVars(~., data = .)
-data_final <- data.frame(predict(data_encoded, newdata = data_filled))
+# Preprocess the data (fill missing values, one-hot encoding)
+data = data.fillna(data.median(numeric_only=True))
+data = pd.get_dummies(data, columns=["map_type", "map_name", "player_name", "team_name", "hero_name"])
 
 # Drop irrelevant columns
-data_final <- select(data_final, -matches(c("team_one_name", "team_two_name", "match_id"), names(data_final)))
+data = data.drop(columns=["team_one_name", "team_two_name", "match_id"])
 
 # Split the data into features and target
-set.seed(42)
-target <- "match_winner"
-features <- setdiff(names(data_final), target)
-X <- data_final[features]
-y <- data_final[[target]]
+X = data.drop("match_winner", axis=1)
+y = data["match_winner"]
 
 # Split the data into training and testing sets
-trainIndex <- createDataPartition(y, p = .8, list = FALSE)
-X_train <- X[trainIndex, ]
-y_train <- y[trainIndex]
-X_test <- X[-trainIndex, ]
-y_test <- y[-trainIndex]
-
-# Feature selection using Random Forest with reduced number of trees
-set.seed(42)
-feature_selector <- randomForest(
-    x = X_train,
-    y = y_train,
-    ntree = 50, # Reduced number of trees for quicker computation
-    mtry = floor(sqrt(ncol(X_train))), # Default value, can be reduced further
-    nodesize = 10, # Minimum size of terminal nodes
-    maxnodes = 30, # Maximum number of terminal nodes
-    importance = TRUE,
-    do.trace = 10
-)
-important_features <- importance(feature_selector)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
 # Train models
-logistic_regression_model <- train(y_train ~ ., data = data.frame(X_train, y_train), method = "glm")
-random_forest_model <- randomForest(X_train, y_train)
+lr_model = LogisticRegression().fit(X_train, y_train)
+rf_model = RandomForestClassifier(n_estimators=50, random_state=42).fit(X_train, y_train)
+gb_model = GradientBoostingClassifier(n_estimators=100, random_state=42).fit(X_train, y_train)
 
 # Predictions and Evaluation
-predictions_lr <- predict(logistic_regression_model, X_test)
-predictions_rf <- predict(random_forest_model, X_test)
+predictions_lr = lr_model.predict(X_test)
+predictions_rf = rf_model.predict(X_test)
+predictions_gb = gb_model.predict(X_test)
 
-# Train the Gradient Boosting model with cross-validation
-set.seed(42)
-gradient_boosting_model <- gbm(
-    formula = y_train ~ .,
-    distribution = "bernoulli",
-    data = data.frame(X_train, y_train),
-    n.trees = 5000, # Number of trees can be adjusted based on your dataset
-    cv.folds = 5, # Number of cross-validation folds
-    verbose = FALSE
-)
+# Save predictions and true values for R
+results = pd.DataFrame({
+    "y_test": y_test,
+    "predictions_lr": predictions_lr,
+    "predictions_rf": predictions_rf,
+    "predictions_gb": predictions_gb
+})
+results.to_csv("model_results.csv", index=False)
 
-# Find the best number of trees
-best_trees <- gbm.perf(gradient_boosting_model, method = "cv")
+# Save feature importances for R
+feature_importances = pd.DataFrame({
+    "feature": X.columns,
+    "importance_rf": rf_model.feature_importances_,
+    "importance_gb": gb_model.feature_importances_
+})
+feature_importances.to_csv("feature_importances.csv", index=False)
 
-# Predictions using the best number of trees
-predictions_gb <- predict(gradient_boosting_model, X_test, n.trees = best_trees, type = "response")
+```
 
-# Convert probabilities to class labels based on a threshold (e.g., 0.5)
-predictions_gb <- ifelse(predictions_gb > 0.5, 1, 0)
+### R
+```{r ml2}
+# Load necessary libraries
+library(ggplot2)
+library(dplyr)
+library(caret)
+library(reshape2)
 
-# Gradient Boosting Classification Report
-print("Gradient Boosting Classification Report:")
-print(confusionMatrix(factor(predictions_gb), factor(y_test)))
+# Read the model results and feature importances
+results <- read.csv("model_results.csv")
+feature_importances <- read.csv("feature_importances.csv")
 
-# Classification report
-print("Logistic Regression Classification Report:")
-print(confusionMatrix(predictions_lr, y_test))
+# Selecting the top 10 important features for each model
+top_features_rf <- feature_importances %>%
+                   arrange(desc(importance_rf)) %>%
+                   head(10)
 
-print("Random Forest Classification Report:")
-print(confusionMatrix(predictions_rf, y_test))
-
-# Feature Importances
-feature_importances_rf <- varImp(random_forest_model)
-feature_importances_gb <- summary(gradient_boosting_model)
+top_features_gb <- feature_importances %>%
+                   arrange(desc(importance_gb)) %>%
+                   head(10)
 
 # Plotting feature importances
 # For Random Forest
-rf_imp <- data.frame(Importance = feature_importances_rf$Overall, Feature = row.names(feature_importances_rf))
-ggplot(rf_imp, aes(x = reorder(Feature, Importance), y = Importance)) +
+ggplot(top_features_rf, aes(x = reorder(feature, importance_rf), y = importance_rf)) +
     geom_bar(stat = "identity") +
     coord_flip() +
-    labs(title = "Feature Importance - Random Forest")
+    labs(title = "Top 10 Feature Importances - Random Forest")
 
 # For Gradient Boosting
-gb_imp <- data.frame(Importance = feature_importances_gb, Feature = names(feature_importances_gb))
-ggplot(gb_imp, aes(x = reorder(Feature, Importance), y = Importance)) +
+ggplot(top_features_gb, aes(x = reorder(feature, importance_gb), y = importance_gb)) +
     geom_bar(stat = "identity") +
     coord_flip() +
-    labs(title = "Feature Importance - Gradient Boosting")
-```
+    labs(title = "Top 10 Feature Importances - Gradient Boosting")
 
-```{r ml2}
-# Function to extract performance metrics from a confusion matrix
-extract_metrics <- function(cm) {
-    data.frame(
-        Accuracy = cm$overall["Accuracy"],
-        Sensitivity = cm$byClass["Sensitivity"],
-        Specificity = cm$byClass["Specificity"]
-    )
-}
-
-# Function to plot confusion matrix as a heatmap
-plot_confusion_matrix <- function(cm, title) {
-    as.table(cm$table) %>%
-        as.data.frame() %>%
-        ggplot(aes(x = Reference, y = Prediction, fill = Freq)) +
-        geom_tile(color = "white") +
-        scale_fill_gradient(low = "white", high = "steelblue") +
-        geom_text(aes(label = sprintf("%0.0f", Freq)), vjust = 1) +
-        theme_minimal() +
-        labs(title = title, fill = "Count")
-}
-
-# Calculate performance metrics and create plots for each model
+# Confusion matrices and performance metrics
 # Logistic Regression
-cm_lr <- confusionMatrix(predictions_lr, y_test)
-metrics_lr <- extract_metrics(cm_lr)
-plot_cm_lr <- plot_confusion_matrix(cm_lr, "Logistic Regression Confusion Matrix")
+cm_lr <- confusionMatrix(as.factor(results$predictions_lr), as.factor(results$y_test))
+metrics_lr <- data.frame(Model = "Logistic Regression", Accuracy = cm_lr$overall['Accuracy'], Sensitivity = cm_lr$byClass['Sensitivity'], Specificity = cm_lr$byClass['Specificity'])
 
 # Random Forest
-cm_rf <- confusionMatrix(predictions_rf, y_test)
-metrics_rf <- extract_metrics(cm_rf)
-plot_cm_rf <- plot_confusion_matrix(cm_rf, "Random Forest Confusion Matrix")
+cm_rf <- confusionMatrix(as.factor(results$predictions_rf), as.factor(results$y_test))
+metrics_rf <- data.frame(Model = "Random Forest", Accuracy = cm_rf$overall['Accuracy'], Sensitivity = cm_rf$byClass['Sensitivity'], Specificity = cm_rf$byClass['Specificity'])
 
 # Gradient Boosting
-cm_gb <- confusionMatrix(factor(predictions_gb), factor(y_test))
-metrics_gb <- extract_metrics(cm_gb)
-plot_cm_gb <- plot_confusion_matrix(cm_gb, "Gradient Boosting Confusion Matrix")
+cm_gb <- confusionMatrix(as.factor(results$predictions_gb), as.factor(results$y_test))
+metrics_gb <- data.frame(Model = "Gradient Boosting", Accuracy = cm_gb$overall['Accuracy'], Sensitivity = cm_gb$byClass['Sensitivity'], Specificity = cm_gb$byClass['Specificity'])
 
-# Combine performance metrics into one dataframe
+# Combine metrics and melt for ggplot
 combined_metrics <- rbind(metrics_lr, metrics_rf, metrics_gb)
-row.names(combined_metrics) <- c("Logistic Regression", "Random Forest", "Gradient Boosting")
+melted_metrics <- melt(combined_metrics, id.vars = "Model")
 
 # Bar plot of accuracy, sensitivity, and specificity for each model
-ggplot(melt(combined_metrics), aes(x = Var2, y = value, fill = Var2)) +
+ggplot(melted_metrics, aes(x = variable, y = value, fill = Model)) +
     geom_bar(stat = "identity", position = position_dodge()) +
-    facet_wrap(~Var1) +
+    facet_wrap(~Model) +
     scale_fill_brewer(palette = "Set1") +
     labs(x = "Metric", y = "Value", title = "Model Performance Comparison") +
     theme_minimal()
 
-# Display the plots
-plot_cm_lr
-plot_cm_rf
-plot_cm_gb
 ```
