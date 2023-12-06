@@ -18,7 +18,6 @@ p <- ggplot(world_data) +
   scale_fill_viridis_c(name = "Number of Players") +
   theme_void()
 
-plotly_plot <- ggplotly(p, tooltip = "name")
+plotly_plot <- ggplotly(p, tooltip = "Representation")
 
-# Save the plot as an HTML file
-htmlwidgets::saveWidget(plotly_plot, "plotly_map.html")
+print(plotly_plot)
