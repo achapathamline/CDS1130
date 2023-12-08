@@ -35,9 +35,9 @@ Overwatch is a team team-based shooter game with many heros that each come with 
 
 The game categorizes characters into three roles:
 
-- Tanks: These characters are the front line of every team. Tanks make space, absorb incoming damage, and set up plays for their teammates.
-- Damage: These characters are the follow up to the front line. They are either launching rockets from up behind cover or are deep behind enemy lines taking out their support.
-- Support: These characters usually take a back seat when it comes to eliminating the enemy team, by healing their team they ensure that their front-liners can take whatever comes at them, without getting taken out.
+-   Tanks: These characters are the front line of every team. Tanks make space, absorb incoming damage, and set up plays for their teammates.
+-   Damage: These characters are the follow up to the front line. They are either launching rockets from up behind cover or are deep behind enemy lines taking out their support.
+-   Support: These characters usually take a back seat when it comes to eliminating the enemy team, by healing their team they ensure that their front-liners can take whatever comes at them, without getting taken out.
 
 ## Overwatch League: 2020 Season Analysis
 
@@ -268,7 +268,6 @@ ggplot(avg_elim_by_hero, aes(x = reorder(hero_name, average_eliminations), y = a
 
 This graph shows us the distribution of eliminations from game to game which highlights the differences between the Tank, Damage, and Support roles.
 
-
 ```{r 4}
 ggplot(eliminations_data, aes(x = stat_amount, fill = role)) +
     geom_histogram(bins = 30, alpha = 0.7, position = "dodge") +
@@ -334,18 +333,16 @@ ggplot(hero_picks_long, aes(x = map_name, y = hero_name, fill = pick_count)) +
     theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
-We can see that Lucio, baptiste, Reinhardt, Tracer, Zenyatta, and Sigma were played on most maps. We can also see that Zarya, Roadhog, Junkrat and Bastion were not picked that much. 
+We can see that Lucio, baptiste, Reinhardt, Tracer, Zenyatta, and Sigma were played on most maps. We can also see that Zarya, Roadhog, Junkrat and Bastion were not picked that much.
 
 This heat map also allows so to see that Havana, Horizon Lunar Colony, and Numbani were not picked as maps to play on as much as the others.
-
 
 ## Machine Learning
 
 Looking at all the previous information and seeing that support heros like lucio were played all the time, leads us to ask the question: "Why?" Lucio appeared so low on the hero analysis earlier but he was one of the most popular picks even though he didn't have much elimination impact.
 
-To answer this question, we have trained multiple Machine Learning Models to determine which features are going to be the best to look at when determining Hero and Player performance. 
+To answer this question, we have trained multiple Machine Learning Models to determine which features are going to be the best to look at when determining Hero and Player performance.
 
-### Python
 ```{python ml, eval = FALSE}
 # Import necessary libraries
 import pandas as pd
@@ -401,7 +398,6 @@ feature_importances.to_csv("feature_importances.csv", index=False)
 
 ```
 
-### R
 ```{r ml2}
 # Load necessary libraries
 library(ggplot2)
@@ -452,7 +448,7 @@ ggplot(melted_metrics, aes(x = variable, y = value, fill = variable)) +
 
 ```
 
-From analyzing the feature importance, accuracy, sensitivity, and specificity of each model, we can see that the Random Forest model does the best job at correctly predicting which team is going to win. 
+From analyzing the feature importance, accuracy, sensitivity, and specificity of each model, we can see that the Random Forest model does the best job at correctly predicting which team is going to win.
 
 ```{r feature importance graph}
 # Random Forest
@@ -464,8 +460,11 @@ ggplot(top_features_rf, aes(x = reorder(feature, importance_rf), y = importance_
 
 The Random Forest Model uses the in game statistics to determine which team is going to win, while the Gradient Boosting model mostly just picks it's favorite team. Logistic Regression couldn't identify any true negatives, and gradient boosting did not do that great either. So for the highest accuracy, and the most realistic true positive and best true negative predicting, Random Forest stands miles ahead of the other models trained.
 
+## Taking a different approach based on the Machine Learning Model
 
 Since the Random Forest machine learning model decided that average_time_alive was the best feature to determine which team was going to win, I want to create a box plot showing which heros were able to survive longer on average.
+
+### Average Time Alive
 
 ```{r average time alive box plot}
 time_alive_data <- filter(data, stat_name == "Average Time Alive")
@@ -495,7 +494,9 @@ ggplot(avg_time_alive_by_hero, aes(x = reorder(hero_name, average_time_alive), y
     theme(legend.position = "bottom")
 ```
 
-These graphs explain some of the other picks such as Mercy and Sombra, and also reinforce D.Va as one of our top picks but lets look at the `objective-time` and `healing_done` features to get a better picture. 
+These graphs explain some of the other picks such as Mercy and Sombra, and also reinforce D.Va as one of our top picks but lets look at the `objective-time` and `healing_done` features to get a better picture.
+
+### Objective Time
 
 ```{r objective time graphs}
 objective_time_data <- filter(data, stat_name == "Objective Time")
@@ -521,9 +522,11 @@ ggplot(avg_objective_time_by_hero, aes(x = reorder(hero_name, average_objective_
     theme(legend.position = "bottom")
 ```
 
-This gives us a better understanding of why Lucio is higher on the pick list. It also gives us some interesting information about certain Tanks that hold space on objectives really well, or on heros that can go solo contest an objective while the rest of the team goes to fight somewhere else with a positional advantage.
+This gives us a better understanding of why Lucio is higher on the pick list. It also gives us some interesting information about certain Tanks that hold space on objectives really well, or on heroes that can go solo contest an objective while the rest of the team goes to fight somewhere else with a positional advantage.
 
 Lets look at `healing_done` to get a full picture.
+
+### Healing Done
 
 ```{r healing done plots}
 healing_done_data <- filter(data, stat_name == "Healing Done")
@@ -551,9 +554,8 @@ ggplot(avg_healing_done_by_hero, aes(x = reorder(hero_name, average_healing_done
     theme(legend.position = "bottom")
 ```
 
-This gives us a better picture on why Support heros are so impactful. They are the only heros in the game (other than Soldier: 76) that can heal others. 
-This tells us why support heros are picked so much but doesn't reinforce why lucio is so high on the pick list. To understand this we have to look at Lucio's kit which includes a speed boost for all alies within range. This specific ability in his kit has been cited by the professional analysts in the league to be the key factor in why his pick rate is so high. Lucio allows your team to move across the map faster, make obtaining better positioning easier, and also allows for quick decisions that the opposing team wont be expecting.
+This gives us a better picture on why Support heroes are so impactful. They are the only heroes in the game (other than Soldier: 76) that can heal others. This tells us why support heroes are picked so much but doesn't reinforce why Lucio is so high on the pick list. To understand this we have to look at Lucio's kit which includes a speed boost for all allies within range. This specific ability in his kit has been cited by the professional analysts in the league to be the key factor in why his pick rate is so high. Lucio allows your team to move across the map faster, make obtaining better positioning easier, and also allows for quick decisions that the opposing team wont be expecting.
 
 ## Summary
 
-Overall this analysis has given us a good understanding of which players and heros performed the best throughout the 2020 Overwatch League Season. If this was a game played by robots we would now be able to accurately predict which team was going to win every time, and which heros should be picked. Alas, there are many things that cannot be evaluated by the statistics tracked in game. The decision making skills of the in-game leaders, the individual decisions that all 12 players are making in the heat of the moment, as well as the abilities that cannot be well measured like Lucio's speed boost. 
+Overall this analysis has given us a good understanding of which players and heroes performed the best throughout the 2020 Overwatch League Season. If this was a game played by robots we would now be able to accurately predict which team was going to win every time, and which heroes should be picked. Alas, there are many things that cannot be evaluated by the statistics tracked in game. The decision making skills of the in-game leaders, the individual decisions that all 12 players are making in the heat of the moment, as well as the abilities that cannot be well measured like Lucio's speed boost.
